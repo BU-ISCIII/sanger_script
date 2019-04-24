@@ -1,6 +1,6 @@
 #!/bin/bash
 ########## Configuration settings  ########
-source sanger_configuration.sh
+source sanger_configuration
 
 
 time=$(date +%T-%m%d%y)

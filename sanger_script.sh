@@ -86,7 +86,7 @@ script_dir=$(dirname $(readlink -f $0))
 cwd="$(pwd)"
 is_verbose=false
 ########## Configuration settings  ########
-source sanger_configuration.sh
+source sanger_configuration
 
 #SET COLORS
 

@@ -34,7 +34,7 @@ TEMPLATE_EMAIL=/home/smonzon/Documents/desarrollo/sanger_script/template_mail.ht
 #
 # DIRECTORY ON THE REMOTE SERVER, WHERE THE SHARED FILES WILL BE COPY
 REMOTE_SAMBA_SHARE_DIR=/etc/samba/shares
-# 
+#
 # Remote Folder where to put the shared files
 REMOTE_SAMBA_SHARED_FOLDER="/processing_Data/sanger_seq_users"
 #
