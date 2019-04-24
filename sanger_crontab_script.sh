@@ -1,10 +1,6 @@
 #!/bin/bash
 ########## Configuration settings  ########
-PATH_SANGER_FOLDER="/processing_Data/bioinfoshare/sanger_seq"
-REMOTE_SAMBA_SHARED_FOLDER="/processing_Data/sanger_seq_users"
-SANGER_SCRIPT="/home/smonzon/Documents/desarrollo/sanger_script/sanger_script.sh"
-PROCESSED_FILE_DIRECTORY="/home/smonzon/Documents/desarrollo/sanger_script"
-PROCESSED_FILE_NAME="run_processed"
+source sanger_configuration.sh
 
 
 time=$(date +%T-%m%d%y)

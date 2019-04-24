@@ -85,32 +85,8 @@ error(){
 script_dir=$(dirname $(readlink -f $0))
 cwd="$(pwd)"
 is_verbose=false
-#### CONFIGURATION FILES ON LOCAL SERVER
-#
-# TEMPORARY DIRECTORY WHERE SHARED CONFIGURATION FILE ARE SAVED BEFORE COPYING TO REMOTE SERVER
-TMP_SAMBA_SHARE_DIR=/home/smonzon/Documents/desarrollo/sanger_script/tmp/shares
-#
-# LOCATION OF THE TEMPLATE FILE FOR CONFIG SAMBA SHARED FOLDERS
-SAMBA_SHARE_TEMPLATE=/home/smonzon/Documents/desarrollo/sanger_script/template.conf
-#
-# FOLDER TO KEEP TRACK OF THE SHARED FOLDER FOR REMOVING AFTER RETENTION PERIOD
-SAMBA_TRANSFERED_FOLDERS=/home/smonzon/Documents/desarrollo/sanger_script/transfered_folder/
-#
-# LOCATION OF THE TEMPLATE FILE FOR SENDING EMAILS
-TEMPLATE_EMAIL=/home/smonzon/Documents/desarrollo/sanger_script/template_mail.htm
-#
-
-####################################################
-#### CONFIGURATION FILES ON REMOTE SERVER
-#
-# DIRECTORY ON THE REMOTE SERVER, WHERE THE SHARED FILES WILL BE COPY
-REMOTE_SAMBA_SHARE_DIR=/etc/samba/shares
-#
-# USER USED FOR REMOTE LOGIN
-REMOTE_USER="root"
-#
-# REMOTE SERVER WHERE TO COPY THE OUTPUT FILES
-REMOTE_SAMBA_SERVER="barbarroja"
+########## Configuration settings  ########
+source sanger_configuration.sh
 
 #SET COLORS
 

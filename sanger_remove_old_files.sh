@@ -1,7 +1,7 @@
 #!/bin/bash
 ########## Configuration settings  ########
-RETENTION_TIME="+7"
-SHARED_FOLDER="/srv/sanger_script/share/"
+source sanger_configuration.sh
+
 
 date=`date +%Y-%m-%d`
 
