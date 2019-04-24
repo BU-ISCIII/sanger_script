@@ -43,7 +43,7 @@ while read -r line ; do
 	# include the file into procesed file
 	echo "$bn_file" >> $proc_file
 	# Delete temporary folder
-	#rm -rf tmp
+	rm -rf tmp
 done <<<"$files"
 time=$(date +%T-%m%d%y)
 echo "End crontab - $time"
