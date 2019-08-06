@@ -1,7 +1,8 @@
 #!/bin/bash
 ########## Configuration settings  ########
-source sanger_configuration
-
+#set -x
+source /opt/sanger_script/sanger_configuration
+export PATH="/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin"
 
 time=$(date +%T-%m%d%y)
 echo "Initiating crontab - $time"

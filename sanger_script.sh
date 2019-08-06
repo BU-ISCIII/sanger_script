@@ -86,7 +86,8 @@ script_dir=$(dirname $(readlink -f $0))
 cwd="$(pwd)"
 is_verbose=false
 ########## Configuration settings  ########
-source sanger_configuration
+source $script_dir/sanger_configuration
+export PATH="/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin"
 
 #SET COLORS
 
@@ -227,7 +228,7 @@ for folder in $(ls tmp | grep $run_name);do
 	emails=$(cat tmp/$folder/user_allowed.txt)
 
 	number_files=$( ls -t1 tmp/$folder | wc -l )
-	echo -e "$folder\t$date\t$users\t$number_files" >> $script_dir/samba_folders
+	echo -e "$folder\t$date\t$users\t$number_files" >> $script_dir/logs/samba_folders
 
 	echo "Sending email"
 	sed "s/##FOLDER##/$folder/g" $TEMPLATE_EMAIL | sed "s/##USERS##/$users/g" | sed "s/##MAILS##/$emails/g" | sed "s/##RUN_NAME##/$run_name/g"> tmp/mail.tmp
@@ -247,6 +248,6 @@ rsync -rlv $TMP_SAMBA_SHARE_DIR/ $REMOTE_USER@$REMOTE_SAMBA_SERVER:$REMOTE_SAMBA
 
 echo "Restarting samba service"
 ## samba service restart
-ssh $REMOTE_USER@$REMOTE_SAMBA_SERVER 'service smb restart'
+ssh $REMOTE_USER@$REMOTE_SAMBA_SERVER 'sudo service smb restart'
 
 echo "File $sanger_file process has been completed"
