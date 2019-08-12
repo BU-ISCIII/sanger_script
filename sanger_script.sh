@@ -181,6 +181,19 @@ while read -r line ;do
         continue
     fi
     emails=$(echo $comment | sed 's/:/,/g')
+	IFS=',' read -ra mails <<< $emails
+
+	## Validate emails
+	for mail in ${mails[@]}
+	do
+		i=$mail
+		IFS="@" read -ra domain <<< $mail
+		if [ "${domain[1]}" != "isciii.es" ] && [ "${domain[1]}" != "externos.isciii.es" ];then
+			echo ${domain[1]}
+			echo "Emails provided are not an isciii domain (isciii.es or externos.isciii.es)"
+		fi
+	done
+
     user_names=$(echo $comment | sed 's/@isciii.es//g' | sed 's/@externos.isciii.es//g')
 
     IFS=':' read -r -a users <<< "$user_names"

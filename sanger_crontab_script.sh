@@ -38,11 +38,13 @@ while read -r line ; do
 		time=$(date +%T-%m%d%y)
 		echo "Executing script $time: $SANGER_SCRIPT -f $PATH_SANGER_FOLDER/$bn_file -r $PATH_SANGER_FOLDER/$path_folder  -o $SHARED_FOLDER"
 		$SANGER_SCRIPT -f $PATH_SANGER_FOLDER/$bn_file -r $PATH_SANGER_FOLDER/$path_folder  -o $REMOTE_SAMBA_SHARED_FOLDER
+		# include the file into procesed file
+		echo "$bn_file" >> $proc_file
+
 	else
 		echo "Run already processed."
 	fi
-	# include the file into procesed file
-	echo "$bn_file" >> $proc_file
+
 	# Delete temporary folder
 	rm -rf tmp
 done <<<"$files"
