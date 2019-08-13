@@ -39,7 +39,9 @@ while read -r line ; do
 		echo "Executing script $time: $SANGER_SCRIPT -f $PATH_SANGER_FOLDER/$bn_file -r $PATH_SANGER_FOLDER/$path_folder  -o $SHARED_FOLDER"
 		$SANGER_SCRIPT -f $PATH_SANGER_FOLDER/$bn_file -r $PATH_SANGER_FOLDER/$path_folder  -o $REMOTE_SAMBA_SHARED_FOLDER
 		# include the file into procesed file
-		echo "$bn_file" >> $proc_file
+		if [ $? -eq 0 ]; then
+			echo "$bn_file" >> $proc_file
+		fi
 
 	else
 		echo "Run already processed."
@@ -47,6 +49,7 @@ while read -r line ; do
 
 	# Delete temporary folder
 	rm -rf tmp
+
 done <<<"$files"
 time=$(date +%T-%m%d%y)
 echo "End crontab - $time"

@@ -77,9 +77,26 @@ error(){
     echo -e "\n---------------------------------------\n"
   fi
 
+  #Mail admins
+  echo -e "Subject:Sanger script error\nError in Script $script on or near line $parent_lineno: ${message}" | sendmail -f "bioinformatica@isciii.es" -t "bioinformatica@isciii.es"
+
   exit "${code}"
 }
 
+mail_user_error(){
+	local parent_lineno="$1"
+	local message="$2"
+
+	RED='\033[0;31m'
+	NC='\033[0m'
+
+	content="ERROR on or near line ${parent_lineno}: \
+			MESSAGE:\n \
+			$message"
+# 	mkdir -p tmp
+	sed "s/##ERROR##/$content/g" ./template_error_sanger.htm > tmp/error_mail.htm
+	sendmail -t < tmp/error_mail.htm || error ${LINENO} $(basename $0) "Sending error mail error."
+}
 
 #DECLARE FLAGS AND VARIABLES
 script_dir=$(dirname $(readlink -f $0))
@@ -176,8 +193,8 @@ while read -r line ;do
     comment=$(sed 's/ *$//' <<<$comment)
     # print an error in case the comment column contains more than 1 username and it is not sepparated by ":" but space
     if  [[ $comment == *" "* ]] ; then
-        printf "${RED}Unable to process the sample on the line $line ${NC}\n"
-        printf "${RED}There are spaces in comment field ${NC}\n"
+        mail_user_error ${LINENO} "Unable to process the sample on the line $line.There are spaces in comment field"
+        error ${LINENO} $(basename $0) "Unable to process the sample on the line $line.There are spaces in comment field"
         continue
     fi
     emails=$(echo $comment | sed 's/:/,/g')
@@ -189,8 +206,8 @@ while read -r line ;do
 		i=$mail
 		IFS="@" read -ra domain <<< $mail
 		if [ "${domain[1]}" != "isciii.es" ] && [ "${domain[1]}" != "externos.isciii.es" ];then
-			echo ${domain[1]}
-			echo "Emails provided are not an isciii domain (isciii.es or externos.isciii.es)"
+			mail_user_error ${LINENO} "Emails provided in line $line are not an isciii domain (isciii.es or externos.isciii.es)"
+			error ${LINENO} $(basename $0) "Emails provided in line $line are not an isciii domain (isciii.es or externos.isciii.es)"
 		fi
 	done
 
