@@ -39,8 +39,11 @@ while read -r line ; do
 		echo "Executing script $time: $SANGER_SCRIPT -f $PATH_SANGER_FOLDER/$bn_file -r $PATH_SANGER_FOLDER/$path_folder  -o $SHARED_FOLDER"
 		$SANGER_SCRIPT -f $PATH_SANGER_FOLDER/$bn_file -r $PATH_SANGER_FOLDER/$path_folder  -o $REMOTE_SAMBA_SHARED_FOLDER
 		# include the file into procesed file
+		echo $?
 		if [ $? -eq 0 ]; then
 			echo "$bn_file" >> $proc_file
+		else
+  			echo -e "Something unexpected went wrong in sanger script" | sendmail -f "bioinformatica@isciii.es" -t "bioinformatica@isciii.es"
 		fi
 
 	else

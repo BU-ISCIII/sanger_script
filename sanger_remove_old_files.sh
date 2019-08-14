@@ -12,12 +12,26 @@ echo "Date is : $date"
 ###  delete shared folder older than the days in RETENTION_TIME ###
 echo "$SAMBA_TRANSFERED_FOLDERS"
 echo "$REMOTE_SAMBA_SHARED_FOLDER"
+
 mkdir -p $(dirname $tmpfile)
-find $SAMBA_TRANSFERED_FOLDERS -type f -mtime $RETENTION_TIME | xargs -I % echo "ssh $REMOTE_USER@$REMOTE_SAMBA_SERVER 'cd $REMOTE_SAMBA_SHARED_FOLDER; name=\$(basename %) ;rm -rf \$name; cd -'" > $tmpfile
-find $SAMBA_TRANSFERED_FOLDERS -type f -mtime $RETENTION_TIME | xargs -I % echo "ssh $REMOTE_USER@$REMOTE_SAMBA_SERVER 'cd $REMOTE_SAMBA_SHARE_DIR; name=\$(basename %) ;rm -rf \${name}.conf;sed -i \"/\${name}.conf/ d\" includes.conf  ;cd -'" >> $tmpfile
+
+# Remove user shared folders
+find $SAMBA_TRANSFERED_FOLDERS -type f -mtime $RETENTION_TIME_SHARED_FOLDERS | xargs -I % echo "ssh $REMOTE_USER@$REMOTE_SAMBA_SERVER 'cd $REMOTE_SAMBA_SHARED_FOLDER; name=\$(basename %) ;rm -rf \$name; cd -'" > $tmpfile
+
+# Remove already processed runs in sanger folder
+find $PATH_SANGER_FOLDER -mtime $RETENTION_TIME_SHARED_FOLDERS | xargs -I % echo "ssh $REMOTE_USER@$REMOTE_SAMBA_SERVER 'cd $PATH_SANGER_FOLDER; name=\$(basename %) ;rm -rf \$name; cd -'" > $tmpfile
+
+# Remove configuration es for sharing.
+find $SAMBA_TRANSFERED_FOLDERS -type f -mtime $RETENTION_TIME_CONF_FILES | xargs -I % echo "ssh $REMOTE_USER@$REMOTE_SAMBA_SERVER 'cd $REMOTE_SAMBA_SHARE_DIR; name=\$(basename %) ;rm -rf \${name}.conf;sed -i \"/\${name}.conf/ d\" includes.conf  ;cd -'" >> $tmpfile
+
+# Execute commands
 bash $tmpfile
+
+# Remove script
 rm -rf $tmpfile
-find $SAMBA_TRANSFERED_FOLDERS -type f -mtime $RETENTION_TIME -exec rm -- '{}' \;
+
+## Remove transfered folder files in client.
+find $SAMBA_TRANSFERED_FOLDERS -type f -mtime $RETENTION_TIME_SHARED_FOLDERS -exec rm -- '{}' \;
 
 echo "Restarting samba service"
 ## samba service restart
