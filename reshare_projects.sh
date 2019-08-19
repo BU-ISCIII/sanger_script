@@ -184,13 +184,13 @@ while read -r line ;do
     fi
 
 	folder=$(ls $SAMBA_TRANSFERED_FOLDERS | grep -P ".*$run.*$user.*")
+	echo "Folder $folder is accesible for users: $users"
+	sed "s/##FOLDER##/$folder/g" $SAMBA_SHARE_TEMPLATE | sed "s/##USERS##/$users/g" > $TMP_SAMBA_SHARE_DIR/$folder".conf"
 	echo "include = $REMOTE_SAMBA_SHARE_DIR/${folder}.conf" >> $TMP_SAMBA_SHARE_DIR/includes.conf
 
 	#number_files=$( ls -t1 tmp/$folder | wc -l )
 	echo -e "$folder\t$date\t$users" >> $script_dir/logs/reshare_samba_folders
-	echo $line
-	echo $emails
-	echo $users
+
 	echo "Sending email"
 	sed "s/##FOLDER##/$folder/g" $TEMPLATE_EMAIL | sed "s/##USERS##/$users/g" | sed "s/##MAILS##/$emails/g" | sed "s/##RUN_NAME##/$run_name/g"> tmp/mail.tmp
 	## Send mail to users

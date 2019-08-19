@@ -37,6 +37,7 @@ REMOTE_SAMBA_SHARE_DIR=/etc/samba/smb.conf.d
 #
 # Remote Folder where to put the shared files
 REMOTE_SAMBA_SHARED_FOLDER="/srv/genomica/sanger_users"
+REMOTE_SAMBA_SANGER_FOLDER="/srv/genomica/sanger_seq"
 #
 # USER USED FOR REMOTE LOGIN
 #REMOTE_USER="genomicadm"
@@ -51,7 +52,7 @@ REMOTE_SAMBA_SERVER="barbarroja"
 ####################################################
 #
 #RETENTION_TIME_SHARED_FOLDERS="+182"
-RETENTION_TIME_SHARED_FOLDERS="+1s"
+RETENTION_TIME_SHARED_FOLDERS="+5"
 #RETENTION_TIME_CONF_FILES="+21"
-RETENTION_TIME_CONF_FILES="+1s"
+RETENTION_TIME_CONF_FILES="+1"
 #
