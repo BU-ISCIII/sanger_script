@@ -21,7 +21,7 @@ find $SAMBA_TRANSFERED_FOLDERS -type f -mtime $RETENTION_TIME_SHARED_FOLDERS | x
 # Remove already processed runs in sanger folder
 find $PATH_SANGER_FOLDER -mtime $RETENTION_TIME_SHARED_FOLDERS | xargs -I % echo "ssh $REMOTE_USER@$REMOTE_SAMBA_SERVER 'cd $PATH_SANGER_FOLDER; name=\$(basename %) ;rm -rf \$name; cd -'" > $tmpfile
 
-# Remove configuration es for sharing.
+# Remove configuration files for sharing.
 find $SAMBA_TRANSFERED_FOLDERS -type f -mtime $RETENTION_TIME_CONF_FILES | xargs -I % echo "ssh $REMOTE_USER@$REMOTE_SAMBA_SERVER 'cd $REMOTE_SAMBA_SHARE_DIR; name=\$(basename %) ;rm -rf \${name}.conf;sed -i \"/\${name}.conf/ d\" includes.conf  ;cd -'" >> $tmpfile
 
 # Execute commands

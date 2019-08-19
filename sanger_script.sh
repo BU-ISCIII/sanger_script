@@ -234,7 +234,7 @@ while read -r line ;do
     fi
     touch $SAMBA_TRANSFERED_FOLDERS/$date"_"$run_name"_"$allowed_users
 
-done <<<"$var_file"
+done <<< "$var_file"
 
 ## Copy created shared folders to remote file system server
 rsync -vr tmp/ $REMOTE_USER@$REMOTE_SAMBA_SERVER:$remote_ouput_dir/ || error ${LINENO} $(basename $0) "Shared folders couldn't be copied to remote filesystem server."

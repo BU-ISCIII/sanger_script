@@ -166,13 +166,16 @@ printf "%s"
 printf "${YELLOW}------------------${NC}\n\n"
 
 
+date=`date +%Y%m%d`
+
 echo "Fetching samba includes file from filesystem file server."
 scp $REMOTE_USER@$REMOTE_SAMBA_SERVER:$REMOTE_SAMBA_SHARE_DIR/includes.conf $TMP_SAMBA_SHARE_DIR || error ${LINENO} $(basename $0) "Failed fetching of samba includes file"
 
 while read -r line ;do
-    run=$(echo $line | cut -d "," -f 1 )
-    mails=$(echo $line | cut -d "," -f 2 | sed "s/:/,/g")
-    users=$(echo $line | cut -d "," -f 2 | sed "s/externos\.isciii\.es//g" | sed "s/isciii\.es//g")
+
+	run=$(echo $line | cut -d "," -f 1 )
+    emails=$(echo $line | cut -d "," -f 2 | sed "s/:/,/g")
+    users=$(echo $line | cut -d "," -f 2 | sed "s/@externos\.isciii\.es//g" | sed "s/@isciii\.es//g")
     # print an error in case the comment column contains more than 1 username and it is not sepparated by ":" but space
     if  [[ $user == *" "* ]] ; then
         mail_user_error ${LINENO} "Unable to process the sample on the line $line.There are spaces in comment field"
@@ -183,9 +186,11 @@ while read -r line ;do
 	folder=$(ls $SAMBA_TRANSFERED_FOLDERS | grep -P ".*$run.*$user.*")
 	echo "include = $REMOTE_SAMBA_SHARE_DIR/${folder}.conf" >> $TMP_SAMBA_SHARE_DIR/includes.conf
 
-	number_files=$( ls -t1 tmp/$folder | wc -l )
-	echo -e "$folder\t$date\t$users\t$number_files" >> $script_dir/logs/samba_folders
-
+	#number_files=$( ls -t1 tmp/$folder | wc -l )
+	echo -e "$folder\t$date\t$users" >> $script_dir/logs/reshare_samba_folders
+	echo $line
+	echo $emails
+	echo $users
 	echo "Sending email"
 	sed "s/##FOLDER##/$folder/g" $TEMPLATE_EMAIL | sed "s/##USERS##/$users/g" | sed "s/##MAILS##/$emails/g" | sed "s/##RUN_NAME##/$run_name/g"> tmp/mail.tmp
 	## Send mail to users
@@ -194,7 +199,15 @@ while read -r line ;do
 	echo "mail sended"
 
 	echo "Deleting mail temp file"
-done <<<"$var_file"
 
+done < "$reshare_file"
 
+echo "Copying samba shares configuration to remote filesystem server"
+rsync -rlv $TMP_SAMBA_SHARE_DIR/ $REMOTE_USER@$REMOTE_SAMBA_SERVER:$REMOTE_SAMBA_SHARE_DIR/ || error ${LINENO} $(basename $0) "Shared samba config files couldn't be copied to remote filesystem server."
+
+echo "Restarting samba service"
+## samba service restart
+#ssh $REMOTE_USER@$REMOTE_SAMBA_SERVER 'sudo service smb restart'
+
+echo "File $reshare_file process has been completed"
 
