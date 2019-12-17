@@ -17,6 +17,9 @@ mkdir -p $(dirname $tmpfile)
 
 # Remove user shared folders
 #find $SAMBA_TRANSFERED_FOLDERS -type f -mtime $RETENTION_TIME_SHARED_FOLDERS | xargs -I % echo "ssh $REMOTE_USER@$REMOTE_SAMBA_SERVER 'cd $REMOTE_SAMBA_SHARED_FOLDER; name=\$(basename %) ;rm -rf \$name; cd -'" > $tmpfile
+echo "Searching $SAMBA_TRANSFERED_FOLDERS"
+echo "Deleting old projects:"
+find $SAMBA_TRANSFERED_FOLDERS -type f -cmin $RETENTION_TIME_SHARED_FOLDERS
 find $SAMBA_TRANSFERED_FOLDERS -type f -cmin $RETENTION_TIME_SHARED_FOLDERS | xargs -I % echo "ssh $REMOTE_USER@$REMOTE_SAMBA_SERVER 'cd $REMOTE_SAMBA_SHARED_FOLDER; name=\$(basename %) ;rm -rf \$name; cd -'" > $tmpfile
 
 # Remove already processed runs in sanger folder
@@ -39,6 +42,10 @@ find $SAMBA_TRANSFERED_FOLDERS -type f -cmin $RETENTION_TIME_SHARED_FOLDERS -exe
 
 echo "Restarting samba service"
 ## samba service restart
-ssh $REMOTE_USER@$REMOTE_SAMBA_SERVER 'sudo service smb restart'
+#Centos
+#ssh $REMOTE_USER@$REMOTE_SAMBA_SERVER 'sudo service smb restart'
+#Ubuntu
+ssh $REMOTE_USER@$REMOTE_SAMBA_SERVER 'sudo service smbd restart'
+
 
 echo "removed old files script completed"

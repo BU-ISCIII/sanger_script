@@ -278,6 +278,9 @@ rsync -rlv $TMP_SAMBA_SHARE_DIR/ $REMOTE_USER@$REMOTE_SAMBA_SERVER:$REMOTE_SAMBA
 
 echo "Restarting samba service"
 ## samba service restart
+#CentOS
 #ssh $REMOTE_USER@$REMOTE_SAMBA_SERVER 'sudo service smb restart'
+#Ubuntu
+ssh $REMOTE_USER@$REMOTE_SAMBA_SERVER 'sudo /usr/sbin/service smbd restart'
 
 echo "File $sanger_file process has been completed"
