@@ -50,9 +50,9 @@ REMOTE_SAMBA_SERVER="barbarroja"
 ####################################################
 ########## Configuration settings for deleting old folders ########
 ####################################################
-#
-#RETENTION_TIME_SHARED_FOLDERS="+182"
-RETENTION_TIME_SHARED_FOLDERS="+60"
-#RETENTION_TIME_CONF_FILES="+21"
-RETENTION_TIME_CONF_FILES="+1"
+# Without the + or -, already included in the scripts.
+#RETENTION_TIME_SHARED_FOLDERS="182"
+RETENTION_TIME_SHARED_FOLDERS="60"
+#RETENTION_TIME_CONF_FILES="21"
+RETENTION_TIME_CONF_FILES="1"
 #

@@ -200,14 +200,14 @@ while read -r line ;do
     emails=$(echo $comment | sed 's/:/,/g')
 	IFS=',' read -ra mails <<< $emails
 
-	## Validate emails
+	# validate emails
 	for mail in ${mails[@]}
 	do
 		i=$mail
-		IFS="@" read -ra domain <<< $mail
+		ifs="@" read -ra domain <<< $mail
 		if [ "${domain[1]}" != "isciii.es" ] && [ "${domain[1]}" != "externos.isciii.es" ];then
-			mail_user_error ${LINENO} "Emails provided in line $line are not an isciii domain (isciii.es or externos.isciii.es)"
-			error ${LINENO} $(basename $0) "Emails provided in line $line are not an isciii domain (isciii.es or externos.isciii.es)"
+			mail_user_error ${lineno} "emails provided in line $line are not an isciii domain (isciii.es or externos.isciii.es)"
+			error ${lineno} $(basename $0) "emails provided in line $line are not an isciii domain (isciii.es or externos.isciii.es)"
 		fi
 	done
 
@@ -279,8 +279,8 @@ rsync -rlv $TMP_SAMBA_SHARE_DIR/ $REMOTE_USER@$REMOTE_SAMBA_SERVER:$REMOTE_SAMBA
 echo "Restarting samba service"
 ## samba service restart
 #CentOS
-#ssh $REMOTE_USER@$REMOTE_SAMBA_SERVER 'sudo service smb restart'
+ssh $REMOTE_USER@$REMOTE_SAMBA_SERVER 'sudo service smb restart'
 #Ubuntu
-ssh $REMOTE_USER@$REMOTE_SAMBA_SERVER 'sudo /usr/sbin/service smbd restart'
+#ssh $REMOTE_USER@$REMOTE_SAMBA_SERVER 'sudo /usr/sbin/service smbd restart'
 
 echo "File $sanger_file process has been completed"

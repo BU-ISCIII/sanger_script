@@ -175,39 +175,51 @@ while read -r line ;do
 
 	run=$(echo $line | cut -d "," -f 1 )
     emails=$(echo $line | cut -d "," -f 2 | sed "s/:/,/g")
-    users=$(echo $line | cut -d "," -f 2 | sed "s/@externos\.isciii\.es//g" | sed "s/@isciii\.es//g")
+    user=$(echo $line | cut -d "," -f 2 | sed "s/@externos\.isciii\.es//g" | sed "s/@isciii\.es//g")
     # print an error in case the comment column contains more than 1 username and it is not sepparated by ":" but space
-    if  [[ $user == *" "* ]] ; then
+    if  [[ $users == *" "* ]] ; then
         mail_user_error ${LINENO} "Unable to process the sample on the line $line.There are spaces in comment field"
         error ${LINENO} $(basename $0) "Unable to process the sample on the line $line.There are spaces in comment field"
         continue
     fi
 
-	folder=$(ls $SAMBA_TRANSFERED_FOLDERS | grep -P ".*$run.*$user.*")
-	echo "Folder $folder is accesible for users: $users"
-	sed "s/##FOLDER##/$folder/g" $SAMBA_SHARE_TEMPLATE | sed "s/##USERS##/$users/g" > $TMP_SAMBA_SHARE_DIR/$folder".conf"
-	echo "include = $REMOTE_SAMBA_SHARE_DIR/${folder}.conf" >> $TMP_SAMBA_SHARE_DIR/includes.conf
+	folders=$(find $SAMBA_TRANSFERED_FOLDERS -cmin +$RETENTION_TIME_CONF_FILES -cmin -$RETENTION_TIME_SHARED_FOLDERS | grep -P ".*$run.*$user.*")
+	number_folders=$(echo $folders | wc -l)
+    if [ $number_folders > 0 ]; then
+		for folder in $folders;
+		do
+			folder=$(basename $folder)
+			echo "Folder $folder is accesible for users: $users"
+			sed "s/##FOLDER##/$folder/g" $SAMBA_SHARE_TEMPLATE | sed "s/##USERS##/$users/g" > $TMP_SAMBA_SHARE_DIR/$folder".conf"
+			echo "include = $REMOTE_SAMBA_SHARE_DIR/${folder}.conf" >> $TMP_SAMBA_SHARE_DIR/includes.conf
+			echo -e "$folder\t$date\t$users" >> $script_dir/logs/reshare_samba_folders
 
-	#number_files=$( ls -t1 tmp/$folder | wc -l )
-	echo -e "$folder\t$date\t$users" >> $script_dir/logs/reshare_samba_folders
+			echo "Sending email"
+			sed "s/##FOLDER##/$folder/g" $TEMPLATE_EMAIL | sed "s/##USERS##/$users/g" | sed "s/##MAILS##/$emails/g" | sed "s/##RUN_NAME##/$run_name/g"> tmp/mail.tmp
+			## Send mail to users
+			sendmail -t < tmp/mail.tmp
 
-	echo "Sending email"
-	sed "s/##FOLDER##/$folder/g" $TEMPLATE_EMAIL | sed "s/##USERS##/$users/g" | sed "s/##MAILS##/$emails/g" | sed "s/##RUN_NAME##/$run_name/g"> tmp/mail.tmp
-	## Send mail to users
-	sendmail -t < tmp/mail.tmp
+			echo "mail sended"
 
-	echo "mail sended"
-
-	echo "Deleting mail temp file"
+			echo "Deleting mail temp file"
+		done
+	else
+        mail_user_error ${LINENO} "Unable to process the run on the line $line. The run is older than the maximum time for storage, or the run is already been shared at the moment."
+        error ${LINENO} $(basename $0) "Unable to process the sample on the line $line.The run is older than the maximum time for storage, or the run is already been shared at the moment."
+        continue
+	fi
 
 done < "$reshare_file"
 
 echo "Copying samba shares configuration to remote filesystem server"
 rsync -rlv $TMP_SAMBA_SHARE_DIR/ $REMOTE_USER@$REMOTE_SAMBA_SERVER:$REMOTE_SAMBA_SHARE_DIR/ || error ${LINENO} $(basename $0) "Shared samba config files couldn't be copied to remote filesystem server."
-
+echo "Deleting temporal local share folder"
+rm $TMP_SAMBA_SHARE_DIR/*
 echo "Restarting samba service"
 ## samba service restart
-#ssh $REMOTE_USER@$REMOTE_SAMBA_SERVER 'sudo service smb restart'
+# Ubuntu
+#ssh $REMOTE_USER@$REMOTE_SAMBA_SERVER 'sudo service smbd restart'
+#Centos
+ssh $REMOTE_USER@$REMOTE_SAMBA_SERVER 'sudo service smb restart'
 
 echo "File $reshare_file process has been completed"
-
