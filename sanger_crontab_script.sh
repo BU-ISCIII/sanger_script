@@ -54,5 +54,14 @@ while read -r line ; do
 	rm -rf tmp
 
 done <<<"$files"
+# Restart samba
+echo "Restarting Samba service"
+ssh $REMOTE_USER@$REMOTE_SAMBA_SERVER 'sudo /usr/sbin/service smbd restart'
+if [ $? -eq 0 ]; then
+	echo "Samba restarting succesfully"
+else
+	echo -e "Something unexpected went wrong in samba restarting in server." | sendmail -f "bioinformatica@isciii.es" -t "bioinformatica@isciii.es"
+fi
+
 time=$(date +%T-%m%d%y)
 echo "End crontab - $time"
