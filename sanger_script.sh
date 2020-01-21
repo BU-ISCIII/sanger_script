@@ -227,7 +227,7 @@ while read -r line ;do
     fi
 
 	echo "Copying files for $sample_name from $run_folder to temporary user share folder"
-    rsync -rlv $run_folder/*$sample_name* $folder_name || error ${LINENO} $(basename $0) "Sequencing files couldn't be copied to tmp folder"
+    rsync -rlv $run_folder/*"_"$well"_"$sample_name* $folder_name || error ${LINENO} $(basename $0) "Sequencing files couldn't be copied to tmp folder"
 
     if [ ! -d $SAMBA_TRANSFERED_FOLDERS ]; then
 		mkdir -p $SAMBA_TRANSFERED_FOLDERS
@@ -237,7 +237,7 @@ while read -r line ;do
 done <<< "$var_file"
 
 ## Copy created shared folders to remote file system server
-rsync -vr tmp/ $REMOTE_USER@$REMOTE_SAMBA_SERVER:$remote_ouput_dir/ || error ${LINENO} $(basename $0) "Shared folders couldn't be copied to remote filesystem server."
+rsync -vr -e "ssh -q" tmp/ $REMOTE_USER@$REMOTE_SAMBA_SERVER:$remote_ouput_dir/ || error ${LINENO} $(basename $0) "Shared folders couldn't be copied to remote filesystem server."
 
 ## Create samba shares.
 if [ ! -d $TMP_SAMBA_SHARE_DIR ]; then
@@ -246,7 +246,7 @@ fi
 
 # fetch the remote Samba includes file
 echo "Fetching samba includes file from filesystem file server."
-scp $REMOTE_USER@$REMOTE_SAMBA_SERVER:$REMOTE_SAMBA_SHARE_DIR/includes.conf $TMP_SAMBA_SHARE_DIR || error ${LINENO} $(basename $0) "Failed fetching of samba includes file"
+scp -q $REMOTE_USER@$REMOTE_SAMBA_SERVER:$REMOTE_SAMBA_SHARE_DIR/includes.conf $TMP_SAMBA_SHARE_DIR || error ${LINENO} $(basename $0) "Failed fetching of samba includes file"
 
 for folder in $(ls tmp | grep $run_name);do
 	echo "Processing folder: $folder"
@@ -274,7 +274,7 @@ done
 
 # Copy shared configuration files to remote
 echo "Copying samba shares configuration to remote filesystem server"
-rsync -rlv $TMP_SAMBA_SHARE_DIR/ $REMOTE_USER@$REMOTE_SAMBA_SERVER:$REMOTE_SAMBA_SHARE_DIR/ || error ${LINENO} $(basename $0) "Shared samba config files couldn't be copied to remote filesystem server."
+rsync -rlv -e "ssh -q" $TMP_SAMBA_SHARE_DIR/ $REMOTE_USER@$REMOTE_SAMBA_SERVER:$REMOTE_SAMBA_SHARE_DIR/ || error ${LINENO} $(basename $0) "Shared samba config files couldn't be copied to remote filesystem server."
 
 #echo "Restarting samba service"
 ## samba service restart

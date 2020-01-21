@@ -173,7 +173,7 @@ echo "Fetching samba includes file from filesystem file server."
 if [ ! -d $TMP_SAMBA_SHARE_DIR ]; then
     mkdir -p $TMP_SAMBA_SHARE_DIR
 fi
-scp $REMOTE_USER@$REMOTE_SAMBA_SERVER:$REMOTE_SAMBA_SHARE_DIR/includes.conf $TMP_SAMBA_SHARE_DIR/ || error ${LINENO} $(basename $0) "Failed fetching of samba includes file"
+scp -q $REMOTE_USER@$REMOTE_SAMBA_SERVER:$REMOTE_SAMBA_SHARE_DIR/includes.conf $TMP_SAMBA_SHARE_DIR/ || error ${LINENO} $(basename $0) "Failed fetching of samba includes file"
 
 while read -r line ;do
 	run=$(echo $line | cut -d "," -f 1 )
@@ -186,11 +186,11 @@ while read -r line ;do
         continue
     fi
 	## Change to mtime if needed!
-	echo "find $SAMBA_TRANSFERED_FOLDERS -cmin +$RETENTION_TIME_CONF_FILES -cmin -$RETENTION_TIME_SHARED_FOLDERS | grep -P \".*$run.*$user.*\""
-	echo "number_folders=$(find $SAMBA_TRANSFERED_FOLDERS -cmin +$RETENTION_TIME_CONF_FILES -cmin -$RETENTION_TIME_SHARED_FOLDERS | grep -P \".*$run.*$user.*\" | wc -l)"
-	number_folders=$(find $SAMBA_TRANSFERED_FOLDERS -cmin +$RETENTION_TIME_CONF_FILES -cmin -$RETENTION_TIME_SHARED_FOLDERS | grep -P ".*$run.*$user.*" | wc -l)
+	echo "find $SAMBA_TRANSFERED_FOLDERS -mtime +$RETENTION_TIME_CONF_FILES -mtime -$RETENTION_TIME_SHARED_FOLDERS | grep -P \".*$run.*$user.*\""
+	echo "number_folders=$(find $SAMBA_TRANSFERED_FOLDERS -mtime +$RETENTION_TIME_CONF_FILES -mtime -$RETENTION_TIME_SHARED_FOLDERS | grep -P \".*$run.*$user.*\" | wc -l)"
+	number_folders=$(find $SAMBA_TRANSFERED_FOLDERS -mtime +$RETENTION_TIME_CONF_FILES -mtime -$RETENTION_TIME_SHARED_FOLDERS | grep -P ".*$run.*$user.*" | wc -l)
     if [ $number_folders -gt 0 ]; then
-		folders=$(find $SAMBA_TRANSFERED_FOLDERS -cmin +$RETENTION_TIME_CONF_FILES -cmin -$RETENTION_TIME_SHARED_FOLDERS | grep -P ".*$run.*$user.*")
+		folders=$(find $SAMBA_TRANSFERED_FOLDERS -mtime +$RETENTION_TIME_CONF_FILES -mtime -$RETENTION_TIME_SHARED_FOLDERS | grep -P ".*$run.*$user.*")
 		echo $folders
 		for folder in $folders;
 		do
@@ -221,14 +221,14 @@ while read -r line ;do
 done < "$reshare_file"
 
 echo "Copying samba shares configuration to remote filesystem server"
-rsync -rlv $TMP_SAMBA_SHARE_DIR/ $REMOTE_USER@$REMOTE_SAMBA_SERVER:$REMOTE_SAMBA_SHARE_DIR/ || error ${LINENO} $(basename $0) "Shared samba config files couldn't be copied to remote filesystem server."
+rsync -rlv -e "ssh -q" $TMP_SAMBA_SHARE_DIR/ $REMOTE_USER@$REMOTE_SAMBA_SERVER:$REMOTE_SAMBA_SHARE_DIR/ || error ${LINENO} $(basename $0) "Shared samba config files couldn't be copied to remote filesystem server."
 echo "Deleting temporal local share folder"
-rm -rf ./tmp
+rm -rf tmp/*
 echo "Restarting samba service"
 ## samba service restart
 # Ubuntu
 #ssh $REMOTE_USER@$REMOTE_SAMBA_SERVER 'sudo service smbd restart'
 #Centos
-ssh $REMOTE_USER@$REMOTE_SAMBA_SERVER 'sudo service smb restart'
+ssh -q $REMOTE_USER@$REMOTE_SAMBA_SERVER 'sudo service smb restart'
 
 echo "File $reshare_file process has been completed"

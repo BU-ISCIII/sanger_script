@@ -43,7 +43,7 @@ while read -r line ; do
 		if [ $? -eq 0 ]; then
 			echo "$bn_file" >> $proc_file
 		else
-  			echo -e "Something unexpected went wrong in sanger script" | sendmail -f "bioinformatica@isciii.es" -t "bioinformatica@isciii.es"
+  			echo -e "Something unexpected went wrong in sanger script" | sendmail -f "bioinformatica@isciii.es" -t "bioinformatica@isciii.es" -v "soporte.hpc@isciii.es"
 		fi
 
 	else
@@ -56,7 +56,11 @@ while read -r line ; do
 done <<<"$files"
 # Restart samba
 echo "Restarting Samba service"
-ssh $REMOTE_USER@$REMOTE_SAMBA_SERVER 'sudo /usr/sbin/service smbd restart'
+# Ubuntu
+#ssh $REMOTE_USER@$REMOTE_SAMBA_SERVER 'sudo /usr/sbin/service smbd restart'
+# CestOS
+ssh -q $REMOTE_USER@$REMOTE_SAMBA_SERVER 'sudo /usr/sbin/service smb restart'
+
 if [ $? -eq 0 ]; then
 	echo "Samba restarting succesfully"
 else

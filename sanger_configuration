@@ -40,12 +40,12 @@ REMOTE_SAMBA_SHARED_FOLDER="/srv/genomica/sanger_users"
 REMOTE_SAMBA_SANGER_FOLDER="/srv/genomica/sanger"
 #
 # USER USED FOR REMOTE LOGIN
-#REMOTE_USER="genomicadm"
-REMOTE_USER="bioinfocifs"
+REMOTE_USER="genomicadm"
+#REMOTE_USER="bioinfocifs"
 #
 # REMOTE SERVER WHERE TO COPY THE OUTPUT FILES
-#REMOTE_SAMBA_SERVER="neptuno"
-REMOTE_SAMBA_SERVER="barbarroja"
+REMOTE_SAMBA_SERVER="neptuno"
+#REMOTE_SAMBA_SERVER="barbarroja"
 
 ####################################################
 ########## Configuration settings for deleting old folders ########
@@ -54,5 +54,5 @@ REMOTE_SAMBA_SERVER="barbarroja"
 #RETENTION_TIME_SHARED_FOLDERS="182"
 RETENTION_TIME_SHARED_FOLDERS="60"
 #RETENTION_TIME_CONF_FILES="21"
-RETENTION_TIME_CONF_FILES="1"
+RETENTION_TIME_CONF_FILES="15"
 #
