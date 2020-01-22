@@ -24,8 +24,8 @@ if [[ $files == ''  ]]; then
 fi
 
 while read -r line ; do
-	if [ ! -d tmp ]; then
-	    mkdir -p tmp
+	if [ ! -d $PROCESSED_FILE_DIRECTORY/tmp ]; then
+	    mkdir -p $PROCESSED_FILE_DIRECTORY/tmp
 	fi
 	bn_file=$(basename $line)
 	if ! grep -q $bn_file "$proc_file"; then
@@ -51,7 +51,7 @@ while read -r line ; do
 	fi
 
 	# Delete temporary folder
-	rm -rf tmp
+	rm -rf $PROCESSED_FILE_DIRECTORY/tmp/*
 
 done <<<"$files"
 # Restart samba

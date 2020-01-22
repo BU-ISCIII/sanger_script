@@ -93,9 +93,9 @@ mail_user_error(){
 	content="ERROR on or near line ${parent_lineno}: \
 			MESSAGE:\n \
 			$message"
-# 	mkdir -p tmp
-	sed "s/##ERROR##/$content/g" ./template_error_sanger.htm > tmp/error_mail.htm
-	sendmail -t < tmp/error_mail.htm || error ${LINENO} $(basename $0) "Sending error mail error."
+# 	mkdir -p $PROCESSED_FILE_DIRECTORY/tmp
+	sed "s/##ERROR##/$content/g" $PROCESSED_FILE_DIRECTORY/template_error_sanger.htm > $PROCESSED_FILE_DIRECTORY/tmp/error_mail.htm
+	sendmail -t < $PROCESSED_FILE_DIRECTORY/tmp/error_mail.htm || error ${LINENO} $(basename $0) "Sending error mail error."
 }
 
 #DECLARE FLAGS AND VARIABLES
@@ -219,7 +219,7 @@ while read -r line ;do
     well=$(echo $line | cut -d "," -f 1)
     sample_name=$(echo $line | cut -d "," -f 2)
 
-    folder_name=tmp/$date"_"$run_name"_"$allowed_users
+    folder_name=$PROCESSED_FILE_DIRECTORY/tmp/$date"_"$run_name"_"$allowed_users
     if [ ! -d $folder_name ]; then
         mkdir -p $folder_name
         echo "Creating directory for $date"_"$run_name"_"$allowed_users"
@@ -237,7 +237,7 @@ while read -r line ;do
 done <<< "$var_file"
 
 ## Copy created shared folders to remote file system server
-rsync -vr -e "ssh -q" tmp/ $REMOTE_USER@$REMOTE_SAMBA_SERVER:$remote_ouput_dir/ || error ${LINENO} $(basename $0) "Shared folders couldn't be copied to remote filesystem server."
+rsync -vr -e "ssh -q" $PROCESSED_FILE_DIRECTORY/tmp/ $REMOTE_USER@$REMOTE_SAMBA_SERVER:$remote_ouput_dir/ || error ${LINENO} $(basename $0) "Shared folders couldn't be copied to remote filesystem server."
 
 ## Create samba shares.
 if [ ! -d $TMP_SAMBA_SHARE_DIR ]; then
@@ -248,27 +248,27 @@ fi
 echo "Fetching samba includes file from filesystem file server."
 scp -q $REMOTE_USER@$REMOTE_SAMBA_SERVER:$REMOTE_SAMBA_SHARE_DIR/includes.conf $TMP_SAMBA_SHARE_DIR || error ${LINENO} $(basename $0) "Failed fetching of samba includes file"
 
-for folder in $(ls tmp | grep $run_name);do
+for folder in $(ls $PROCESSED_FILE_DIRECTORY/tmp | grep $run_name);do
 	echo "Processing folder: $folder"
 	users=$(echo $folder | cut -d "_" -f3- | sed 's/_/,/g')
 	echo "Folder $folder is accesible for users: $users"
 	sed "s/##FOLDER##/$folder/g" $SAMBA_SHARE_TEMPLATE | sed "s/##USERS##/$users/g" > $TMP_SAMBA_SHARE_DIR/$folder".conf"
 	echo "include = $REMOTE_SAMBA_SHARE_DIR/${folder}.conf" >> $TMP_SAMBA_SHARE_DIR/includes.conf
 
-	emails=$(cat tmp/$folder/user_allowed.txt)
+	emails=$(cat $PROCESSED_FILE_DIRECTORY/tmp/$folder/user_allowed.txt)
 
-	number_files=$( ls -t1 tmp/$folder | wc -l )
+	number_files=$( ls -t1 $PROCESSED_FILE_DIRECTORY/tmp/$folder | wc -l )
 	echo -e "$folder\t$date\t$users\t$number_files" >> $script_dir/logs/samba_folders
 
 	echo "Sending email"
-	sed "s/##FOLDER##/$folder/g" $TEMPLATE_EMAIL | sed "s/##USERS##/$users/g" | sed "s/##MAILS##/$emails/g" | sed "s/##RUN_NAME##/$run_name/g"> tmp/mail.tmp
+	sed "s/##FOLDER##/$folder/g" $TEMPLATE_EMAIL | sed "s/##USERS##/$users/g" | sed "s/##MAILS##/$emails/g" | sed "s/##RUN_NAME##/$run_name/g"> $PROCESSED_FILE_DIRECTORY/tmp/mail.tmp
 	## Send mail to users
-	sendmail -t < tmp/mail.tmp
+	sendmail -t < $PROCESSED_FILE_DIRECTORY/tmp/mail.tmp
 
 	echo "mail sended"
 
 	echo "Deleting mail temp file"
-	#rm tmp/mail.tmp
+	#rm $PROCESSED_FILE_DIRECTORY/tmp/mail.tmp
 
 done
 
