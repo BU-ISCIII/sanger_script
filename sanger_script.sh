@@ -77,6 +77,9 @@ error(){
     echo -e "\n---------------------------------------\n"
   fi
 
+  #Mail admins
+  echo -e "Subject:Sanger script error\nError in Script $script on or near line $parent_lineno: ${message}" | sendmail -f "bioinformatica@isciii.es" -t "bioinformatica@isciii.es"
+
   exit "${code}"
 }
 
@@ -90,41 +93,18 @@ mail_user_error(){
 	content="ERROR on or near line ${parent_lineno}: \
 			MESSAGE:\n \
 			$message"
-# 	mkdir -p tmp
-	sed "s/##ERROR##/$content/g" ./template_error_sanger.htm > tmp/error_mail.htm
-	sendmail -t < tmp/error_mail.htm || error ${LINENO} $(basename $0) "Sending error mail error."
+# 	mkdir -p $PROCESSED_FILE_DIRECTORY/tmp
+	sed "s/##ERROR##/$content/g" $PROCESSED_FILE_DIRECTORY/template_error_sanger.htm > $PROCESSED_FILE_DIRECTORY/tmp/error_mail.htm
+	sendmail -t < $PROCESSED_FILE_DIRECTORY/tmp/error_mail.htm || error ${LINENO} $(basename $0) "Sending error mail error."
 }
 
 #DECLARE FLAGS AND VARIABLES
 script_dir=$(dirname $(readlink -f $0))
 cwd="$(pwd)"
 is_verbose=false
-#### CONFIGURATION FILES ON LOCAL SERVER
-#
-# TEMPORARY DIRECTORY WHERE SHARED CONFIGURATION FILE ARE SAVED BEFORE COPYING TO REMOTE SERVER
-TMP_SAMBA_SHARE_DIR=/home/smonzon/Documents/desarrollo/sanger_script/tmp/shares
-#
-# LOCATION OF THE TEMPLATE FILE FOR CONFIG SAMBA SHARED FOLDERS
-SAMBA_SHARE_TEMPLATE=/home/smonzon/Documents/desarrollo/sanger_script/template.conf
-#
-# FOLDER TO KEEP TRACK OF THE SHARED FOLDER FOR REMOVING AFTER RETENTION PERIOD
-SAMBA_TRANSFERED_FOLDERS=/home/smonzon/Documents/desarrollo/sanger_script/transfered_folder/
-#
-# LOCATION OF THE TEMPLATE FILE FOR SENDING EMAILS
-TEMPLATE_EMAIL=/home/smonzon/Documents/desarrollo/sanger_script/template_mail.htm
-#
-
-####################################################
-#### CONFIGURATION FILES ON REMOTE SERVER
-#
-# DIRECTORY ON THE REMOTE SERVER, WHERE THE SHARED FILES WILL BE COPY
-REMOTE_SAMBA_SHARE_DIR=/etc/samba/shares
-#
-# USER USED FOR REMOTE LOGIN
-REMOTE_USER="root"
-#
-# REMOTE SERVER WHERE TO COPY THE OUTPUT FILES
-REMOTE_SAMBA_SERVER="barbarroja"
+########## Configuration settings  ########
+source $script_dir/sanger_configuration
+export PATH="/usr/local/bin:/bin:/usr/bin:/usr/local/sbin:/usr/sbin"
 
 #SET COLORS
 
@@ -208,23 +188,29 @@ var_file="${tmp//$'\t'/,}"
 
 ## Read txt file line by line and create folders per user, copying the files in each respective folder.
 while read -r line ;do
-	line=${line//[$'\r\n']}
-	if [[ -z $line ]] ; then
-		echo "Remove empty line"
-		continue
-	fi
     comment=$(echo $line | cut -d "," -f 3 )
     # remove the space at the end if exists
     comment=$(sed 's/ *$//' <<<$comment)
-
     # print an error in case the comment column contains more than 1 username and it is not sepparated by ":" but space
     if  [[ $comment == *" "* ]] ; then
-        printf "${RED}Unable to process the sample on the line $line ${NC}\n"
-        printf "${RED}There are spaces in comment field ${NC}\n"
+        mail_user_error ${LINENO} "Unable to process the sample on the line $line.There are spaces in comment field"
+        error ${LINENO} $(basename $0) "Unable to process the sample on the line $line.There are spaces in comment field"
         continue
     fi
-
     emails=$(echo $comment | sed 's/:/,/g')
+	IFS=',' read -ra mails <<< $emails
+
+	## Validate emails
+	for mail in ${mails[@]}
+	do
+		i=$mail
+		IFS="@" read -ra domain <<< $mail
+		if [ "${domain[1]}" != "isciii.es" ] && [ "${domain[1]}" != "externos.isciii.es" ];then
+			mail_user_error ${LINENO} "Emails provided in line $line are not an isciii domain (isciii.es or externos.isciii.es)"
+			error ${LINENO} $(basename $0) "Emails provided in line $line are not an isciii domain (isciii.es or externos.isciii.es)"
+		fi
+	done
+
     user_names=$(echo $comment | sed 's/@isciii.es//g' | sed 's/@externos.isciii.es//g')
 
     IFS=':' read -r -a users <<< "$user_names"
@@ -233,7 +219,7 @@ while read -r line ;do
     well=$(echo $line | cut -d "," -f 1)
     sample_name=$(echo $line | cut -d "," -f 2)
 
-    folder_name=tmp/$date"_"$run_name"_"$allowed_users
+    folder_name=$PROCESSED_FILE_DIRECTORY/tmp/$date"_"$run_name"_"$allowed_users
     if [ ! -d $folder_name ]; then
         mkdir -p $folder_name
         echo "Creating directory for $date"_"$run_name"_"$allowed_users"
@@ -241,17 +227,17 @@ while read -r line ;do
     fi
 
 	echo "Copying files for $sample_name from $run_folder to temporary user share folder"
-    rsync -rlv $run_folder/*$sample_name* $folder_name || error ${LINENO} $(basename $0) "Sequencing files couldn't be copied to tmp folder"
+    rsync -rlv $run_folder/*"_"$well"_"$sample_name* $folder_name || error ${LINENO} $(basename $0) "Sequencing files couldn't be copied to tmp folder"
 
     if [ ! -d $SAMBA_TRANSFERED_FOLDERS ]; then
 		mkdir -p $SAMBA_TRANSFERED_FOLDERS
     fi
     touch $SAMBA_TRANSFERED_FOLDERS/$date"_"$run_name"_"$allowed_users
 
-done <<<"$var_file"
+done <<< "$var_file"
 
 ## Copy created shared folders to remote file system server
-rsync -vr -e "ssh -q" tmp/ $REMOTE_USER@$REMOTE_SAMBA_SERVER:$remote_ouput_dir/ || error ${LINENO} $(basename $0) "Shared folders couldn't be copied to remote filesystem server."
+rsync -vr -e "ssh -q" $PROCESSED_FILE_DIRECTORY/tmp/ $REMOTE_USER@$REMOTE_SAMBA_SERVER:$remote_ouput_dir/ || error ${LINENO} $(basename $0) "Shared folders couldn't be copied to remote filesystem server."
 
 ## Create samba shares.
 if [ ! -d $TMP_SAMBA_SHARE_DIR ]; then
@@ -260,50 +246,38 @@ fi
 
 # fetch the remote Samba includes file
 echo "Fetching samba includes file from filesystem file server."
-scp $REMOTE_USER@$REMOTE_SAMBA_SERVER:$REMOTE_SAMBA_SHARE_DIR/includes.conf $TMP_SAMBA_SHARE_DIR || error ${LINENO} $(basename $0) "Failed fetching of samba includes file"
+scp -q $REMOTE_USER@$REMOTE_SAMBA_SERVER:$REMOTE_SAMBA_SHARE_DIR/includes.conf $TMP_SAMBA_SHARE_DIR || error ${LINENO} $(basename $0) "Failed fetching of samba includes file"
 
-for folder in $(ls tmp | grep $run_name);do
+for folder in $(ls $PROCESSED_FILE_DIRECTORY/tmp | grep $run_name);do
 	echo "Processing folder: $folder"
 	users=$(echo $folder | cut -d "_" -f3- | sed 's/_/,/g')
 	echo "Folder $folder is accesible for users: $users"
 	sed "s/##FOLDER##/$folder/g" $SAMBA_SHARE_TEMPLATE | sed "s/##USERS##/$users/g" > $TMP_SAMBA_SHARE_DIR/$folder".conf"
 	echo "include = $REMOTE_SAMBA_SHARE_DIR/${folder}.conf" >> $TMP_SAMBA_SHARE_DIR/includes.conf
 
-	emails=$(cat tmp/$folder/user_allowed.txt)
+	emails=$(cat $PROCESSED_FILE_DIRECTORY/tmp/$folder/user_allowed.txt)
 
-	number_files=$( ls -t1 tmp/$folder | wc -l )
+	number_files=$( ls -t1 $PROCESSED_FILE_DIRECTORY/tmp/$folder | wc -l )
 	echo -e "$folder\t$date\t$users\t$number_files" >> $script_dir/logs/samba_folders
 
 	echo "Sending email"
-	sed "s/##FOLDER##/$folder/g" $TEMPLATE_EMAIL | sed "s/##USERS##/$users/g" | sed "s/##MAILS##/$emails/g" | sed "s/##RUN_NAME##/$run_name/g"> tmp/mail.tmp
+	sed "s/##FOLDER##/$folder/g" $TEMPLATE_EMAIL | sed "s/##USERS##/$users/g" | sed "s/##MAILS##/$emails/g" | sed "s/##RUN_NAME##/$run_name/g"> $PROCESSED_FILE_DIRECTORY/tmp/mail.tmp
 	## Send mail to users
-	sendmail -t < tmp/mail.tmp
+	sendmail -t < $PROCESSED_FILE_DIRECTORY/tmp/mail.tmp
 
-	#echo "mail sended"
+	echo "mail sended"
 
 	echo "Deleting mail temp file"
-	rm tmp/mail.tmp
+	#rm $PROCESSED_FILE_DIRECTORY/tmp/mail.tmp
 
 done
 
 # Copy shared configuration files to remote
 echo "Copying samba shares configuration to remote filesystem server"
- rsync -rlv $TMP_SAMBA_SHARE_DIR/ $REMOTE_USER@$REMOTE_SAMBA_SERVER:$REMOTE_SAMBA_SHARE_DIR/ || error ${LINENO} $(basename $0) "Shared samba config files couldn't be copied to remote filesystem server."
+rsync -rlv -e "ssh -q" $TMP_SAMBA_SHARE_DIR/ $REMOTE_USER@$REMOTE_SAMBA_SERVER:$REMOTE_SAMBA_SHARE_DIR/ || error ${LINENO} $(basename $0) "Shared samba config files couldn't be copied to remote filesystem server."
 
-echo "Restarting samba service"
+#echo "Restarting samba service"
 ## samba service restart
-ssh $REMOTE_USER@$REMOTE_SAMBA_SERVER 'service smb restart'
-echo "Reading the tmp folder to send notification emails"
-for folder in $(ls tmp | grep $run_name);do
-	echo "Sending email"
-	sed "s/##FOLDER##/$folder/g" $TEMPLATE_EMAIL | sed "s/##USERS##/$users/g" | sed "s/##MAILS##/$emails/g" | sed "s/##RUN_NAME##/$run_name/g"> tmp/mail.tmp
-	## Send mail to users
-	sendmail -t < tmp/mail.tmp
-
-	echo "mail sended"
-
-done
-echo "Deleting mail temp file"
-rm tmp/mail.tmp
+#ssh $REMOTE_USER@$REMOTE_SAMBA_SERVER 'sudo /usr/sbin/service smbd restart'
 
 echo "File $sanger_file process has been completed"
