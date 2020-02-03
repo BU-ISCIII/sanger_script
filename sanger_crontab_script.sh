@@ -51,7 +51,7 @@ while read -r line ; do
 	fi
 
 	# Delete temporary folder
-	rm -rf tmp
+	rm -rf $PROCESSED_FILE_DIRECTORY/tmp
 
 done <<<"$files"
 # Restart samba

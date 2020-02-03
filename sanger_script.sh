@@ -60,7 +60,7 @@ error(){
   local parent_lineno="$1"
   local script="$2"
   local message="$3"
-  local code="${4:-1}"
+  local code="${4:1}"
 
 	RED='\033[0;31m'
 	NC='\033[0m'
@@ -79,6 +79,7 @@ error(){
 
   #Mail admins
   echo -e "Subject:Sanger script error\nError in Script $script on or near line $parent_lineno: ${message}" | sendmail -f "bioinformatica@isciii.es" -t "bioinformatica@isciii.es"
+  rm -rf $PROCESSED_FILE_DIRECTORY/tmp
 
   exit "${code}"
 }
@@ -86,6 +87,7 @@ error(){
 mail_user_error(){
 	local parent_lineno="$1"
 	local message="$2"
+	local code="${3:1}"
 
 	RED='\033[0;31m'
 	NC='\033[0m'
@@ -96,6 +98,8 @@ mail_user_error(){
 # 	mkdir -p $PROCESSED_FILE_DIRECTORY/tmp
 	sed "s/##ERROR##/$content/g" $PROCESSED_FILE_DIRECTORY/template_error_sanger.htm > $PROCESSED_FILE_DIRECTORY/tmp/error_mail.htm
 	sendmail -t < $PROCESSED_FILE_DIRECTORY/tmp/error_mail.htm || error ${LINENO} $(basename $0) "Sending error mail error."
+    rm -rf $PROCESSED_FILE_DIRECTORY/tmp
+    exit "${code}"
 }
 
 #DECLARE FLAGS AND VARIABLES
@@ -234,16 +238,21 @@ while read -r line ;do
 
 	echo "Copying files for $sample_name from $run_folder to temporary user share folder"
     rsync -rlv $run_folder/*"_"$well"_"$sample_name* $folder_name || error ${LINENO} $(basename $0) "Sequencing files couldn't be copied to tmp folder"
-
-    if [ ! -d $SAMBA_TRANSFERED_FOLDERS ]; then
-		mkdir -p $SAMBA_TRANSFERED_FOLDERS
+    if [ ! -d $PROCESSED_FILE_DIRECTORY/tmp/transfered_folders ]; then
+		mkdir -p $PROCESSED_FILE_DIRECTORY/tmp/transfered_folders
     fi
-    touch $SAMBA_TRANSFERED_FOLDERS/$date"_"$run_name"_"$allowed_users
+    touch $PROCESSED_FILE_DIRECTORY/tmp/transfered_folders/$date"_"$run_name"_"$allowed_users
 
 done <<< "$var_file"
 
 ## Copy created shared folders to remote file system server
 rsync -vr -e "ssh -q" $PROCESSED_FILE_DIRECTORY/tmp/ $REMOTE_USER@$REMOTE_SAMBA_SERVER:$remote_ouput_dir/ || error ${LINENO} $(basename $0) "Shared folders couldn't be copied to remote filesystem server."
+
+if [ ! -d $SAMBA_TRANSFERED_FOLDERS ]; then
+	mkdir -p $SAMBA_TRANSFERED_FOLDERS
+fi
+# Copy transfered files to SAMBA_TRANSFERED_FOLDERS
+rsync -vr $PROCESSED_FILE_DIRECTORY/tmp/transfered_folders $SAMBA_TRANSFERED_FOLDERS || error ${LINENO} $(basename $0) "Shared tmp transfered files couldn't be copied to samba_shared_folder"
 
 ## Create samba shares.
 if [ ! -d $TMP_SAMBA_SHARE_DIR ]; then
@@ -271,7 +280,7 @@ rsync -rlv -e "ssh -q" $TMP_SAMBA_SHARE_DIR/ $REMOTE_USER@$REMOTE_SAMBA_SERVER:$
 
 #echo "Restarting samba service"
 ## samba service restart
-ssh $REMOTE_USER@$REMOTE_SAMBA_SERVER 'sudo /usr/sbin/service smbd restart'
+#ssh $REMOTE_USER@$REMOTE_SAMBA_SERVER 'sudo /usr/sbin/service smbd restart'
 
 
 ## Email sending
@@ -279,9 +288,9 @@ for folder in $(ls tmp | grep $run_name);do
 	echo "Sending email"
 	sed "s/##FOLDER##/$folder/g" $TEMPLATE_EMAIL | sed "s/##USERS##/$users/g" | sed "s/##MAILS##/$emails/g" | sed "s/##RUN_NAME##/$run_name/g"> tmp/mail.tmp
 	## Send mail to users
-	sendmail -t < tmp/mail.tmp
+	sendmail -t < tmp/mail.tmp || error ${LINENO} $(basename $0) "Error in mail sending"
 	echo "mail sended"
-	echo "Deleting mail temp file"
-	rm $PROCESSED_FILE_DIRECTORY/tmp/mail.tmp
 done
+echo "Deleting mail temp file"
+rm $PROCESSED_FILE_DIRECTORY/tmp/mail.tmp
 echo "File $sanger_file process has been completed"
