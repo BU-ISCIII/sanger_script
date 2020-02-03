@@ -288,7 +288,7 @@ for folder in $(ls tmp | grep $run_name);do
 	echo "Sending email"
 	sed "s/##FOLDER##/$folder/g" $TEMPLATE_EMAIL | sed "s/##USERS##/$users/g" | sed "s/##MAILS##/$emails/g" | sed "s/##RUN_NAME##/$run_name/g"> tmp/mail.tmp
 	## Send mail to users
-	#sendmail -t < tmp/mail.tmp || error ${LINENO} $(basename $0) "Error in mail sending"
+	sendmail -t < tmp/mail.tmp || error ${LINENO} $(basename $0) "Error in mail sending"
 	echo "mail sended"
 done
 echo "Deleting mail temp file"
