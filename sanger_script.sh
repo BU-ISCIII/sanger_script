@@ -188,6 +188,12 @@ var_file="${tmp//$'\t'/,}"
 
 ## Read txt file line by line and create folders per user, copying the files in each respective folder.
 while read -r line ;do
+	# Ignore empty lines
+	line=${line//[$'\r\n']}
+	if [[ -z $line ]] ; then
+		echo "Remove empty line"
+		continue
+	fi
     comment=$(echo $line | cut -d "," -f 3 )
     # remove the space at the end if exists
     comment=$(sed 's/ *$//' <<<$comment)
@@ -254,22 +260,9 @@ for folder in $(ls $PROCESSED_FILE_DIRECTORY/tmp | grep $run_name);do
 	echo "Folder $folder is accesible for users: $users"
 	sed "s/##FOLDER##/$folder/g" $SAMBA_SHARE_TEMPLATE | sed "s/##USERS##/$users/g" > $TMP_SAMBA_SHARE_DIR/$folder".conf"
 	echo "include = $REMOTE_SAMBA_SHARE_DIR/${folder}.conf" >> $TMP_SAMBA_SHARE_DIR/includes.conf
-
 	emails=$(cat $PROCESSED_FILE_DIRECTORY/tmp/$folder/user_allowed.txt)
-
 	number_files=$( ls -t1 $PROCESSED_FILE_DIRECTORY/tmp/$folder | wc -l )
 	echo -e "$folder\t$date\t$users\t$number_files" >> $script_dir/logs/samba_folders
-
-	echo "Sending email"
-	sed "s/##FOLDER##/$folder/g" $TEMPLATE_EMAIL | sed "s/##USERS##/$users/g" | sed "s/##MAILS##/$emails/g" | sed "s/##RUN_NAME##/$run_name/g"> $PROCESSED_FILE_DIRECTORY/tmp/mail.tmp
-	## Send mail to users
-	sendmail -t < $PROCESSED_FILE_DIRECTORY/tmp/mail.tmp
-
-	echo "mail sended"
-
-	echo "Deleting mail temp file"
-	#rm $PROCESSED_FILE_DIRECTORY/tmp/mail.tmp
-
 done
 
 # Copy shared configuration files to remote
@@ -278,6 +271,17 @@ rsync -rlv -e "ssh -q" $TMP_SAMBA_SHARE_DIR/ $REMOTE_USER@$REMOTE_SAMBA_SERVER:$
 
 #echo "Restarting samba service"
 ## samba service restart
-#ssh $REMOTE_USER@$REMOTE_SAMBA_SERVER 'sudo /usr/sbin/service smbd restart'
+ssh $REMOTE_USER@$REMOTE_SAMBA_SERVER 'sudo /usr/sbin/service smbd restart'
 
+
+## Email sending
+for folder in $(ls tmp | grep $run_name);do
+	echo "Sending email"
+	sed "s/##FOLDER##/$folder/g" $TEMPLATE_EMAIL | sed "s/##USERS##/$users/g" | sed "s/##MAILS##/$emails/g" | sed "s/##RUN_NAME##/$run_name/g"> tmp/mail.tmp
+	## Send mail to users
+	sendmail -t < tmp/mail.tmp
+	echo "mail sended"
+	echo "Deleting mail temp file"
+	rm $PROCESSED_FILE_DIRECTORY/tmp/mail.tmp
+done
 echo "File $sanger_file process has been completed"
