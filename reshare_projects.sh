@@ -77,12 +77,14 @@ error(){
   #Mail admins
   echo -e "Subject:Sanger script error\nError in Script $script on or near line $parent_lineno: ${message}" | sendmail -f "bioinformatica@isciii.es" -t "bioinformatica@isciii.es"
 
+  rm -rf $PROCESSED_FILE_DIRECTORY/tmp
   exit "${code}"
 }
 
 mail_user_error(){
 	local parent_lineno="$1"
 	local message="$2"
+	local code="${3:-1}"
 
 	RED='\033[0;31m'
 	NC='\033[0m'
@@ -90,9 +92,11 @@ mail_user_error(){
 	content="ERROR on or near line ${parent_lineno}: \
 			MESSAGE:\n \
 			$message"
-# 	mkdir -p tmp
+ 	mkdir -p $PROCESSED_FILE_DIRECTORY/tmp
 	sed "s/##ERROR##/$content/g" ./template_error_sanger.htm > tmp/error_mail.htm
-	sendmail -t < tmp/error_mail.htm || error ${LINENO} $(basename $0) "Sending error mail error."
+	sendmail -t < $PROCESSED_FILE_DIRECTORY/tmp/error_mail.htm || error ${LINENO} $(basename $0) "Sending error mail error."
+    rm -rf $PROCESSED_FILE_DIRECTORY/tmp
+    exit "${code}"
 }
 
 #DECLARE FLAGS AND VARIABLES
@@ -204,13 +208,14 @@ while read -r line ;do
     		touch $SAMBA_TRANSFERED_FOLDERS/$folder
 
 			echo "Sending email"
-			sed "s/##FOLDER##/$folder/g" $TEMPLATE_EMAIL | sed "s/##USERS##/$user/g" | sed "s/##MAILS##/$emails/g" | sed "s/##RUN_NAME##/$run_name/g"> tmp/mail.tmp
+			sed "s/##FOLDER##/$folder/g" $TEMPLATE_EMAIL | sed "s/##USERS##/$user/g" | sed "s/##MAILS##/$emails/g" | sed "s/##RUN_NAME##/$run_name/g"> $PROCESSED_FILE_DIRECTORY/tmp/mail.tmp
 			## Send mail to users
-			sendmail -t < tmp/mail.tmp
+			sendmail -t < $PROCESSED_FILE_DIRECTORY/tmp/mail.tmp
 
 			echo "mail sended"
 
 			echo "Deleting mail temp file"
+			rm $PROCESSED_FILE_DIRECTORY/tmp/mail.tmp
 		done
 	else
         mail_user_error ${LINENO} "Unable to process the run on the line $line. The run is older than the maximum time for storage, or the run is already been shared at the moment."
@@ -223,7 +228,7 @@ done < "$reshare_file"
 echo "Copying samba shares configuration to remote filesystem server"
 rsync -rlv -e "ssh -q" $TMP_SAMBA_SHARE_DIR/ $REMOTE_USER@$REMOTE_SAMBA_SERVER:$REMOTE_SAMBA_SHARE_DIR/ || error ${LINENO} $(basename $0) "Shared samba config files couldn't be copied to remote filesystem server."
 echo "Deleting temporal local share folder"
-rm -rf tmp/*
+rm -rf $PROCESSED_FILE_DIRECTORY/tmp/*
 echo "Restarting samba service"
 ## samba service restart
 # Ubuntu
