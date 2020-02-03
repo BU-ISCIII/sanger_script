@@ -60,7 +60,7 @@ error(){
   local parent_lineno="$1"
   local script="$2"
   local message="$3"
-  local code="${4:1}"
+  local code="${4:-1}"
 
 	RED='\033[0;31m'
 	NC='\033[0m'
@@ -87,7 +87,7 @@ error(){
 mail_user_error(){
 	local parent_lineno="$1"
 	local message="$2"
-	local code="${3:1}"
+	local code="${3:-1}"
 
 	RED='\033[0;31m'
 	NC='\033[0m'
@@ -252,7 +252,7 @@ if [ ! -d $SAMBA_TRANSFERED_FOLDERS ]; then
 	mkdir -p $SAMBA_TRANSFERED_FOLDERS
 fi
 # Copy transfered files to SAMBA_TRANSFERED_FOLDERS
-rsync -vr $PROCESSED_FILE_DIRECTORY/tmp/transfered_folders $SAMBA_TRANSFERED_FOLDERS || error ${LINENO} $(basename $0) "Shared tmp transfered files couldn't be copied to samba_shared_folder"
+rsync -vr $PROCESSED_FILE_DIRECTORY/tmp/transfered_folders/ $SAMBA_TRANSFERED_FOLDERS || error ${LINENO} $(basename $0) "Shared tmp transfered files couldn't be copied to samba_shared_folder"
 
 ## Create samba shares.
 if [ ! -d $TMP_SAMBA_SHARE_DIR ]; then
@@ -288,7 +288,7 @@ for folder in $(ls tmp | grep $run_name);do
 	echo "Sending email"
 	sed "s/##FOLDER##/$folder/g" $TEMPLATE_EMAIL | sed "s/##USERS##/$users/g" | sed "s/##MAILS##/$emails/g" | sed "s/##RUN_NAME##/$run_name/g"> tmp/mail.tmp
 	## Send mail to users
-	sendmail -t < tmp/mail.tmp || error ${LINENO} $(basename $0) "Error in mail sending"
+	#sendmail -t < tmp/mail.tmp || error ${LINENO} $(basename $0) "Error in mail sending"
 	echo "mail sended"
 done
 echo "Deleting mail temp file"
