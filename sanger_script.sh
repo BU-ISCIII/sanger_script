@@ -80,6 +80,20 @@ error(){
   exit "${code}"
 }
 
+mail_user_error(){
+	local parent_lineno="$1"
+	local message="$2"
+
+	RED='\033[0;31m'
+	NC='\033[0m'
+
+	content="ERROR on or near line ${parent_lineno}: \
+			MESSAGE:\n \
+			$message"
+# 	mkdir -p tmp
+	sed "s/##ERROR##/$content/g" ./template_error_sanger.htm > tmp/error_mail.htm
+	sendmail -t < tmp/error_mail.htm || error ${LINENO} $(basename $0) "Sending error mail error."
+}
 
 #DECLARE FLAGS AND VARIABLES
 script_dir=$(dirname $(readlink -f $0))
@@ -237,7 +251,7 @@ while read -r line ;do
 done <<<"$var_file"
 
 ## Copy created shared folders to remote file system server
-rsync -vr tmp/ $REMOTE_USER@$REMOTE_SAMBA_SERVER:$remote_ouput_dir/ || error ${LINENO} $(basename $0) "Shared folders couldn't be copied to remote filesystem server."
+rsync -vr -e "ssh -q" tmp/ $REMOTE_USER@$REMOTE_SAMBA_SERVER:$remote_ouput_dir/ || error ${LINENO} $(basename $0) "Shared folders couldn't be copied to remote filesystem server."
 
 ## Create samba shares.
 if [ ! -d $TMP_SAMBA_SHARE_DIR ]; then
@@ -258,33 +272,33 @@ for folder in $(ls tmp | grep $run_name);do
 	emails=$(cat tmp/$folder/user_allowed.txt)
 
 	number_files=$( ls -t1 tmp/$folder | wc -l )
-	echo -e "$folder\t$date\t$users\t$number_files" >> $script_dir/samba_folders
+	echo -e "$folder\t$date\t$users\t$number_files" >> $script_dir/logs/samba_folders
 
-	#echo "Sending email"
-	#sed "s/##FOLDER##/$folder/g" $TEMPLATE_EMAIL | sed "s/##USERS##/$users/g" | sed "s/##MAILS##/$emails/g" | sed "s/##RUN_NAME##/$run_name/g"> tmp/mail.tmp
+	echo "Sending email"
+	sed "s/##FOLDER##/$folder/g" $TEMPLATE_EMAIL | sed "s/##USERS##/$users/g" | sed "s/##MAILS##/$emails/g" | sed "s/##RUN_NAME##/$run_name/g"> tmp/mail.tmp
 	## Send mail to users
-	#  sendmail -t < tmp/mail.tmp
+	sendmail -t < tmp/mail.tmp
 
 	#echo "mail sended"
 
-	#echo "Deleting mail temp file"
-	#rm tmp/mail.tmp
+	echo "Deleting mail temp file"
+	rm tmp/mail.tmp
 
 done
 
 # Copy shared configuration files to remote
 echo "Copying samba shares configuration to remote filesystem server"
- # rsync -rlv $TMP_SAMBA_SHARE_DIR/ $REMOTE_USER@$REMOTE_SAMBA_SERVER:$REMOTE_SAMBA_SHARE_DIR/ || error ${LINENO} $(basename $0) "Shared samba config files couldn't be copied to remote filesystem server."
+ rsync -rlv $TMP_SAMBA_SHARE_DIR/ $REMOTE_USER@$REMOTE_SAMBA_SERVER:$REMOTE_SAMBA_SHARE_DIR/ || error ${LINENO} $(basename $0) "Shared samba config files couldn't be copied to remote filesystem server."
 
 echo "Restarting samba service"
 ## samba service restart
-# ssh $REMOTE_USER@$REMOTE_SAMBA_SERVER 'service smb restart'
+ssh $REMOTE_USER@$REMOTE_SAMBA_SERVER 'service smb restart'
 echo "Reading the tmp folder to send notification emails"
 for folder in $(ls tmp | grep $run_name);do
 	echo "Sending email"
 	sed "s/##FOLDER##/$folder/g" $TEMPLATE_EMAIL | sed "s/##USERS##/$users/g" | sed "s/##MAILS##/$emails/g" | sed "s/##RUN_NAME##/$run_name/g"> tmp/mail.tmp
 	## Send mail to users
-	#  sendmail -t < tmp/mail.tmp
+	sendmail -t < tmp/mail.tmp
 
 	echo "mail sended"
 
